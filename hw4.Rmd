@@ -64,33 +64,49 @@ day21 %>%
 
 ```{r}
 summary(complete[complete$Time==0, ])
-weightThroughTime <- complete %>% filter(weight[Time == 0] == 43 | weight[Time == 0] == 39) %>%
-  ggplot(aes(Time, y=weight, color = Chick)) + geom_line() + xlab("Day") +
-  ggtitle("Smallest and Largest Chick Weight Through Time")
-weightThroughTime
+
+chickMaxMin <- complete %>% 
+  filter(weight[Time == 0] == 43 | weight[Time == 0] == 39)
+
+number6 <- chickMaxMin %>% ggplot(aes(x=Time, y=weight)) + 
+  geom_smooth(data = chickMaxMin, aes(x=Time, y=weight, color ='red'), method='lm') + 
+  facet_wrap(~weight[Time == 0]) + geom_point() + ggtitle("Max and Min Chick Weight Growth Through Time")
+number6
 ```
 
 7. Add to the previous plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
 
 ```{r}
-weightThroughTime + stat_summary(fun.y=mean, aes(group=1), geom='line', color='black', size = 3)
+complete %>% filter(weight[Time == 0] == 43 | weight[Time == 0] == 39) %>% 
+  ggplot(aes(x=Time, y=weight)) + geom_smooth(method='lm') + 
+  geom_smooth(data = complete, aes(x=Time, y=weight, color ='blue'), method='lm') + geom_point() +
+  facet_wrap(~weight[Time == 0]) +
+  ggtitle("Max and Min Chick Weight Growth Through Time") 
+
+
+
 ```
 
-*The trajectory shows that the growth on average was fairly constant, except for a small decrease in growth around Day 12 to 14. The average growth was somewhere around 11 units of growth per day. *
+*The trajectory shows that the growth of smallest and largest initial weights was right in line with the overall everage trend line per chick. This is not what I expected, as I was expecting these two extremes to be very much different in terms of weight gain.*
 
 8. What else do you find interesting in the dataset? Show your exploratory analysis.
 ```{r}
-#Create a histogram showing growth rate bell curve between day 12 and 14 to try to see why growth was slow there
+complete %>% filter(weight[Time == 0] == 43 | weight[Time == 0] == 39) %>%
+  ggplot(aes(Time, y=weight)) + stat_summary(fun.y=mean, aes(group=1), geom='line', color='black', size = 3) + 
+  ggtitle("Average Growth Per Chick Over Time")
+
+#Create a bar chart showing growth rate per chick between days 10 and 12 and days 12 and 14 to try to see why growth was slow there
 
 day12and14 <- complete %>% filter(Time == 12 | Time == 14) %>% 
   mutate(averageGrowthRate = weight[Time == 14] - weight[Time ==12])
+
+day10and12 <- complete %>% filter(Time == 10 | Time == 12) %>% 
+  mutate(averageGrowthRate = weight[Time == 12] - weight[Time == 10])
+
 weirdDay <- day12and14 %>% filter(Time == 14) %>%
   ggplot(aes(x=Chick, weight=averageGrowthRate)) + geom_bar(fill='red') + 
   ggtitle("Growth Rate per Chick Between Day 12 and 14") + ylab("Increase in Weight") + 
   geom_hline(aes(yintercept = mean(averageGrowthRate)))
-
-day10and12 <- complete %>% filter(Time == 10 | Time == 12) %>% 
-  mutate(averageGrowthRate = weight[Time == 12] - weight[Time == 10])
 
 normalDay <- day10and12 %>% filter(Time==12) %>%
   ggplot(aes(x=Chick, weight=averageGrowthRate)) + geom_bar(fill='green') + 
@@ -101,6 +117,6 @@ weirdDay
 normalDay
 ```
 
-*These graphs show what I expected them to. The average increase in weight from Day 10 to 12 is much higher due to the higher mean increase in weight. Days 12 to 14 was worse for growth than days 10 to 12 were, in part due to a much higher variability between chicks. The plot for Days 10 - 12 shows a much more steady growth increase across the board, as opposed to the sporadic distribution of the increases from 12-14. There were more outlier values in Days 12-14 than there were in Days 10-12, which also hut the overall mean distribution of the chicks in part 7.*
+*I found it interesting that there was a dip in growth rate in between days 12 and 14. I wanted to see why that was. The average increase in weight from Day 10 to 12 is much higher due to the higher mean increase in weight. Days 12 to 14 was worse for growth than days 10 to 12 were, in part due to a much higher variability between chicks. The plot for Days 10 - 12 shows a much more steady growth increase across the board, as opposed to the sporadic distribution of the increases from 12-14. There were more outlier values in Days 12-14 than there were in Days 10-12.*
 
 Note: your submission is supposed to be fully reproducible, i.e. the TA and I will 'knit' your submission in RStudio. 
