@@ -11,12 +11,96 @@ For all of the questions use `dplyr` functions with the pipe `%>%` whenever poss
 
 1. Get a frequency breakdown of the number of chicks, their average weight and the standard deviation of the weights in each of the diets at the start of the study. Store the resulting data frame in a variable named `weight0` and print.<br>
 <!-- 5 pts of extra credit: construct a ggplot that shows average weights by diet with an interval (shown as a line) of +- the standard deviation around the averages. -->
+
+```{r}
+library(datasets)
+library(dplyr)
+library(ggplot2)
+time0 <- ChickWeight %>% filter(Time==0) %>% 
+  group_by(Diet)
+weight0 <- time0 %>% summarize(number = n(), avg_weight = mean(weight, na.rm = TRUE), 
+                  standard_dev = sd(weight, na.rm=TRUE))
+print(weight0)
+```
+
 2. Each chick should have twelve weight measurements. Use the `dplyr` package to identify how many measurements are there for each chick. Extract a subset of the data for all chicks with complete information, name the data set `complete`, and print the first 3 rows. (Hint: you might want to use mutate to introduce a helper variable consisting of the number of observations)
-4. In the complete data set introduce a new variable that measures the current weight difference compared to day 0. Name this variable  `weightgain` and print the first 3 rows of the new data frame.
-5. Use `{ggplot2}` to create side-by-side boxplots of `weightgain` by `Diet` for day 21. Change the order of the categories in the Diet variable such that the boxplots are ordered by median `weightgain`, and the lower limit of the y axis should be 0. Describe the relationship in 2-3 sentences. 
-6. Answer each of the following questions using numerical and graphical summary. Also explain what you found: (a) Which chick gained the most weight and which gained the least weight? (b) What diets were they on?
-7. For the chicks with the least and the most weight at time 0, plot their growth trajectories over time. </br>
-8. Add to the previous plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
-9. What else do you find interesting in the dataset? Show your exploratory analysis.
+```{r}
+complete <- ChickWeight %>% group_by(Chick) %>% mutate(Freq = n()) 
+complete <- complete %>% filter(Freq == 12)
+head(complete, 3)
+```
+3. In the complete data set introduce a new variable that measures the current weight difference compared to day 0. Name this variable  `weightgain` and print the first 3 rows of the new data frame.
+```{r}
+complete <- complete %>% mutate(weightgain = weight - weight[Time == 0])
+complete
+```
+4. Use `{ggplot2}` to create side-by-side boxplots of `weightgain` by `Diet` for day 21. Change the order of the categories in the Diet variable such that the boxplots are ordered by median `weightgain`, and the lower limit of the y axis should be 0. Describe the relationship in 2-3 sentences. 
+```{r}
+day21 <- complete %>% filter(Time == 21)
+
+day21 %>% mutate(Diet = factor(Diet, levels = c("3", "4", "2", "1")))  %>%
+  ggplot(aes(y=weightgain)) + geom_boxplot() + facet_grid(~Diet) +
+  ylab("Weight Gain") + xlab("Diet") + ggtitle("Weight Gain by Diet on Day 21") + 
+  ylim(0, 350)
+```
+
+*This relationship shows that Diet 3 appears to be the best diet on Day 21 for weight gain in the chicks. It has the nighest median, and the highest maximum weight gain by a considerate margin. The Q3 value for Diet 3 is also the highest of all the diets by far. It is clear to see that these diets are very different from each other in terms of the weight gain they allow.*
+
+5. Answer each of the following questions using numerical and graphical summary. Also explain what you found: (a) Which chick gained the most weight and which gained the least weight? (b) What diets were they on?
+```{r}
+summary(day21$weightgain)
+print(day21 %>% filter(weightgain == 332)) #Chick 35
+print(day21 %>% filter(weightgain == 32)) #Chick 24
+
+day21 %>% 
+  ggplot(aes(x=Chick, weight=weightgain)) + geom_bar() + facet_grid(~Diet, scales = "free_x") + 
+  ggtitle("Total Weight Gain per Chick by Diet") + ylab("Total Weight Gain")
+```
+
+*The chick that gained the most weight was Chick 35, and the chick that gained the least weight was Chick 24. Chick 35 was on Diet 3, and Chick 24 was on Diet 3.*
+
+
+6. For the chicks with the least and the most weight at time 0, plot their growth trajectories over time. </br>
+
+```{r}
+summary(complete[complete$Time==0, ])
+weightThroughTime <- complete %>% filter(weight[Time == 0] == 43 | weight[Time == 0] == 39) %>%
+  ggplot(aes(Time, y=weight, color = Chick)) + geom_line() + xlab("Day") +
+  ggtitle("Smallest and Largest Chick Weight Through Time")
+weightThroughTime
+```
+
+7. Add to the previous plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
+
+```{r}
+weightThroughTime + stat_summary(fun.y=mean, aes(group=1), geom='line', color='black', size = 3)
+```
+
+*The trajectory shows that the growth on average was fairly constant, except for a small decrease in growth around Day 12 to 14. The average growth was somewhere around 11 units of growth per day. *
+
+8. What else do you find interesting in the dataset? Show your exploratory analysis.
+```{r}
+#Create a histogram showing growth rate bell curve between day 12 and 14 to try to see why growth was slow there
+
+day12and14 <- complete %>% filter(Time == 12 | Time == 14) %>% 
+  mutate(averageGrowthRate = weight[Time == 14] - weight[Time ==12])
+weirdDay <- day12and14 %>% filter(Time == 14) %>%
+  ggplot(aes(x=Chick, weight=averageGrowthRate)) + geom_bar(fill='red') + 
+  ggtitle("Growth Rate per Chick Between Day 12 and 14") + ylab("Increase in Weight") + 
+  geom_hline(aes(yintercept = mean(averageGrowthRate)))
+
+day10and12 <- complete %>% filter(Time == 10 | Time == 12) %>% 
+  mutate(averageGrowthRate = weight[Time == 12] - weight[Time == 10])
+
+normalDay <- day10and12 %>% filter(Time==12) %>%
+  ggplot(aes(x=Chick, weight=averageGrowthRate)) + geom_bar(fill='green') + 
+  ggtitle("Growth Rate per Chick Between Day 10 and 12") + ylab("Increase in Weight") + 
+  geom_hline(aes(yintercept = mean(averageGrowthRate)))
+  
+weirdDay
+normalDay
+```
+
+*These graphs show what I expected them to. The average increase in weight from Day 10 to 12 is much higher due to the higher mean increase in weight. Days 12 to 14 was worse for growth than days 10 to 12 were, in part due to a much higher variability between chicks. The plot for Days 10 - 12 shows a much more steady growth increase across the board, as opposed to the sporadic distribution of the increases from 12-14. There were more outlier values in Days 12-14 than there were in Days 10-12, which also hut the overall mean distribution of the chicks in part 7.*
 
 Note: your submission is supposed to be fully reproducible, i.e. the TA and I will 'knit' your submission in RStudio. 
